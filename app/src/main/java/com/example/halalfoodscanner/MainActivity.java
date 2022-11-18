@@ -2,6 +2,7 @@ package com.example.halalfoodscanner;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -29,7 +30,8 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     TextView eCodesTextView;
     TextView ingredientsTextView;
-    TextView status;
+    TextView statusECode;
+    TextView statusIngredients;
     EditText userInput;
     String baseUrl = "https://world.openfoodfacts.org/api/v0/product/";
     ArrayList<String> eCodes = new ArrayList<>();
@@ -39,6 +41,34 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> halal = new ArrayList<>();
     ArrayList<String> musbooh = new ArrayList<>();
     ArrayList<String> haram = new ArrayList<>();
+    String[] musboohIngredients = ("Acid Casein, Artificial Colors, FD&C Yellow No. 5, " +
+            "Artificial Flavors, Aspartame, Balsamic Vinegar, Behenyl Alcohol, Docosanol, " +
+            "Beta-Carotene, Beta Carotene, BHA, BHT, Butter fat Lipolyzed, Buttermilk Solids, " +
+            "Calcium Stearate, Calcium Stearoyl Lactylate, Carrageenan, Caseinates, Cetyl Alcohol, " +
+            "Cheese Powder, Cultured Cream Lipolyzed, Cultured Milk, DATEM, " +
+            "Di- Acetyl Tartrate Ester of Monoglycerides, Diglyceride, Disodium Inosinate, " +
+            "Dried Milk, Enzyme Modified Lecithin, Enzyme Modified Soya Lecithin, Enzymes, " +
+            "Ethoxylated Mono- and Diglycerides, Folic Acid, Glycerin, Glycerol Ester, " +
+            "Glycerol Monostearate, Grape Seed Extract, Grape Skin Powder, Grape Seed Oil, " +
+            "Hydroxylated Lecithin, Lactose, Magnesium Stearate, Margarine, Marshmallow, " +
+            "Monoglycerides, Diglycerides, Niacin, Vitamin B3, Nonfat Dry Milk, Pectin, " +
+            "Polyglycerol Esters of Fatty Acids, Polyoxythylene Sorbitan Monostearate, " +
+            "Polysorbate 60, Polysorbate 65, Polysorbate 80, Propylene Glycol Monostearate, " +
+            "Rennet, Rennet Casein, Riboflavin, Shellac, Sodium Lauryl Sulfate, " +
+            "Sodium Stearoyl Lactylate, Softener, Sorbitan Monostearate, Soy Protein Concentrate, " +
+            "Stevia, Sushi, Taurine, TBHQ, Thiamine Mononitrate, Tocopherol, Vitamin E, Turmeric, " +
+            "Turmeric Extract, Turola Yeast, Vanilla Bean Powder, Whey, Whey Protein Concentrate, " +
+            "Worcestershire Sauce").toLowerCase().split(",");
+    String[] haramIngredients = ("Adenosine 5′ Monophosphate, Alcohol, Bacon, Beer, Beer Batters, " +
+            "Beer Flavor, Brewer’s Yeast Extract, Brewers Yeast Extract, Carmine color, " +
+            "Cochineal Color, Confectionary Glaze, Cytidene 5′ – Monophosphate, " +
+            "Disodium Guanosine 5′ – Monophosphate, Disodium Uridine 5′ – Monophosphate, " +
+            "Erythritol, Ethyl Alcohol, Ethanol, Fermented Cider, Gelatin, Ham, Hard Cider, " +
+            "Inosito 5′ – Monophosphate, L-Cysteine, Lard, Nucleotides, Pork, Rainbow Sprinkles, " +
+            "Rosemary Extract, Rum, Sherry Wine, Sovent Extracted Modified Lecithin, Soya Sauce, " +
+            "Surimi, Teriyaki, Teriyaki Suace, Vanilla Bean Specks, Vanilla Beans, " +
+            "Vanilla Beans Speck, Vanilla Extract, Wine, Wine Vinagar, Yeast Extract, " +
+            "Brewer Yeast").toLowerCase().split(",");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +77,8 @@ public class MainActivity extends AppCompatActivity {
 
         eCodesTextView = findViewById(R.id.eCodes);
         ingredientsTextView = findViewById(R.id.ingredients);
-        status = findViewById(R.id.status);
+        statusECode = findViewById(R.id.status);
+        statusIngredients = findViewById(R.id.statusIngredients);
         userInput = findViewById(R.id.userInput);
 
         inputStream = getResources().openRawResource(R.raw.ecodes);
@@ -74,11 +105,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void startProcess(View view) {
-        callApi(view);
-        String eCodesStatus = eCodesHalalOrHaram();
-        status.setText(eCodesStatus);
-    }
+//    public void startProcess(View view) {
+//        callApi(view);
+//        String eCodesStatus = eCodesHalalOrHaram();
+//        status.setText(eCodesStatus);
+//    }
 
     public void callApi(View view) {
         // clear eCodes
@@ -89,21 +120,45 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONObject response) {
                 try {
-                    ingredients = response.getJSONObject("product").getString("ingredients_text").split("\\W+");;
+                    String ingredientsString = response.getJSONObject("product").getString("ingredients_text").replace(" [", ", ").replace(" (", ", ")
+                            .replace("]", "").replace(")", "");
+                    ingredients = ingredientsString.split(",");
+
+                    for (String ingredient: ingredients) {
+                        boolean containsHaram = Arrays.asList(haramIngredients).contains(ingredient.toLowerCase());
+                        boolean containsMusbooh = Arrays.asList(haramIngredients).contains(ingredient.toLowerCase());
+                        if (containsHaram) {
+                            statusIngredients.setText("Haram");
+                            statusIngredients.setTextColor(Color.RED);
+                            break;
+                        } else if (containsMusbooh && statusIngredients.getText() != "Haram") {
+                            statusIngredients.setText("Musbooh");
+                            statusIngredients.setTextColor(Color.YELLOW);
+                        }
+                    }
+                    if (statusIngredients.getText() == null) {
+                        statusIngredients.setText("Halal");
+                        statusIngredients.setTextColor(Color.GREEN);
+                    }
+                    // ingredients = response.getJSONObject("product").getString("ingredients_text").split("[,(]");
                     JSONArray eCodesJSON = response.getJSONObject("product").getJSONArray("additives_tags");
                     for (int i = 0; i < eCodesJSON.length(); i++){
                         eCodes.add(eCodesJSON.getString(i).substring(3));
                     }
-                    String test = "halal";
+                    String test = "Halal";
+                    statusECode.setTextColor(Color.GREEN);
                     for (String eCode: eCodes) {
                         Log.d("gustymouse", eCode);
                         if (haram.contains(eCode.toUpperCase())) {
                             test = "Haram";
+                            statusECode.setTextColor(Color.RED);
+                            break;
                         } else if (musbooh.contains(eCode.toUpperCase())) {
                             test = "Musbooh";
+                            statusECode.setTextColor(Color.YELLOW);
                         }
                     }
-                    status.setText(test);
+                    statusECode.setText(test);
                     ingredientsTextView.setText(Arrays.toString(ingredients));
                     eCodesTextView.setText(eCodes.toString());
                 } catch (JSONException e) {
